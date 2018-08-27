@@ -1,40 +1,47 @@
-import sys
-import yaml
-import yara
+from modules.yara_module import GithubRules
+from modules.elasticsearch_module import ElasticsearchModule
+from modules.basic_module import BasicClass
+
 import os
+import hashlib
 
-with open("settings.yaml", 'r') as stream:
-    try:
-        conf = yaml.load(stream)
-    except yaml.YAMLError as e:
-        print(e)
+class Yelk(BasicClass):
+    def __init__(self):
+        super(Yelk, self).__init__()
+        self.logger.info("Yelk Module initiated")
+        try:
+            self.github = GithubRules()
+        except Exception as e:
+            self.logger.error(e)
+            quit()
+        try:
+            self.es = ElasticsearchModule()
+        except Exception as e:
+            self.logger.error(e)
+            quit()
 
-if conf:
-    rules_dir = conf['rules']['directory']
-    samples_dir = conf['samples']['directory']
-else:
-    print("No settings.yaml found, please create")
-    quit()
-
-
-yara_files = {}
-count = 1
-for file_name in os.listdir(rules_dir):
-    if file_name[-4:] == ".yar":
-        yara_files["file_{}".format(count)] = "{}/{}".format(rules_dir, file_name)
-        count += 1
-    else:
-        print("Non-.yar file detected, excluding: {}".format(file_name))
-rules = yara.compile(filepaths=yara_files, includes=False)
-
-samples = []
-for file_name in os.listdir(samples_dir):
-    if file_name == "__init__.py":
-        print("Excluding __init__.py")
-    else:
-        full = "{}/{}".format(samples_dir, file_name)
-        samples.append(full)
-
-for sample in samples:
-    matches = rules.match(sample)
-    print(matches)
+    def initial_run(self):
+        """
+        Function to be executed the first time Yelk is executed
+        """
+        if self.github:
+            self.github.obtain_all_rules()
+        
+    def index_rules(self):
+        """
+        Function which indexes all rules within rules_dir to elasticsearch
+        """
+        for file_name in os.listdir(self.conf['rules']['directory']):
+            if ".yar" in file_name:
+                data = {}
+                file_loc = "rules/{}".format(file_name)
+                with open(file_loc, "r") as yara_file:
+                    rule =  yara_file.read()
+                data['rule'] = rule
+                data['rule_name'] = file_name
+                data['hash_id'] = hashlib.sha256(file_name + rule).hexdigest()
+                self.es.index_item(
+                    item=data,
+                    index=self.conf['elasticsearch']['rules_index'],
+                    id_field='hash_id'
+                )

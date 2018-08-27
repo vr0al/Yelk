@@ -3,3 +3,12 @@ rules:
 
 samples:
   directory: FILEPATH
+
+github_api:
+  api_key: API KEY
+
+elasticsearch:
+  rules_index: INDEX
+  samples_index: INDEX`
+  host: HOST
+  port: PORT

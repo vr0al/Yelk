@@ -1,8 +1,12 @@
 from github import Github
 from time import sleep
 
+from basic_module import BasicClass
+
 import requests
 import base64
+import yara
+import os
 
 """
 Simple class for obtaining a large number of open-source Yara rules
@@ -12,12 +16,35 @@ Usage:
 TODO Add more Yara rule sources
 """
 
-class GithubRules(object):
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.roth_yara = "https://api.github.com/repos/Neo23x0/signature-base/git/trees/master?access_token={}&recursive=1".format(api_key)
+class YaraCompiler(BasicClass):
+    def __init__(self):
+        super(YaraCompiler, self).__init__()
+        self.rules_dir = self.conf['rules']['directory']
+    
+    def compile_rules(self, includes=False):
+        """
+        Basic function for iterating through the rules directory and compiling all rules
+        Args:
+            includes: Boolean, enable if you want includes statements in yara rules to be included
+        """
+        yara_files = {}
+        count = 1
+
+        for file_name in os.listdir(self.rules_dir):
+            if file_name[:-4] == ".yar":
+                yara_files["file_{}".format(count)] = "{}/{}".format(self.rules_dir, file_name)
+                count += 1
+            else:
+                self.logger.info("Non-.yar file detected, excluding: {}".format(file_name))
+        self.rules = yara.compile(filepaths=yara_files, includes=includes)
+
+class GithubRules(BasicClass):
+    def __init__(self):
+        super(GithubRules, self).__init__()
+        self.api_key = self.conf['github_api']['api_key']
+        self.roth_yara = "https://api.github.com/repos/Neo23x0/signature-base/git/trees/master?access_token={}&recursive=1".format(self.api_key)
         try:
-            self.github_api = Github(api_key)
+            self.github_api = Github(self.api_key)
             print("Github API initiated")
         except Exception as e:
             print("Error encountered initiating Github API: {}".format(e))
