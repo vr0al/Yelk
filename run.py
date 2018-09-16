@@ -118,6 +118,12 @@ class Yelk(BasicClass):
                     data['string_match_locs'].append(triple[0])
                 data['filename'] = sample
                 data['hash_id'] = hashlib.sha256("{}{}".format(item.rule, sample)).hexdigest()
+                # Calculate a variety of checksum hashes for samples
+                data['md5'] = hashlib.md5(open(sample, 'rb').read()).hexdigest()
+                data['sha1'] = hashlib.sha1(open(sample, 'rb').read()).hexdigest()
+                data['sha256'] = hashlib.sha256(open(sample, 'rb').read()).hexdigest()
+                data['filesize'] = os.path.getsize(sample)
+                
 
                 self.es.index_item(
                     item=data,
