@@ -1,6 +1,8 @@
 from basic_module import BasicClass
 
 import elasticsearch
+import os
+import hashlib
 
 class ElasticsearchModule(BasicClass):
     def __init__(self):
@@ -35,3 +37,21 @@ class ElasticsearchModule(BasicClass):
             except Exception as e:
                 print(e)
         
+    def index_rules(self):
+        """
+        Function which indexes all rules within rules_dir to elasticsearch
+        """
+        for file_name in os.listdir(self.conf['rules']['directory']):
+            if ".yar" in file_name:
+                data = {}
+                file_loc = "rules/{}".format(file_name)
+                with open(file_loc, "r") as yara_file:
+                    rule =  yara_file.read()
+                data['rule'] = rule
+                data['rule_name'] = file_name
+                data['hash_id'] = hashlib.sha256(file_name + rule).hexdigest()
+                self.index_item(
+                    item=data,
+                    index=self.conf['elasticsearch']['rules_index'],
+                    id_field='hash_id'
+                )

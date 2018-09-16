@@ -9,3 +9,8 @@ Uses a variety of Yara rules to scan a large number of files. For each rule, rec
 # TODO
 
 Build basic module for scanning a given file using a single Yara rule
+Resolve issue where externally-defined variables are causing the compilation of Yara rules to crash
+
+# Installation
+
+Docker containers for Elasticsearch, Kibana, Yara

@@ -8,6 +8,7 @@ import base64
 import yara
 import os
 
+
 """
 Simple class for obtaining a large number of open-source Yara rules
 Usage:
@@ -16,9 +17,9 @@ Usage:
 TODO Add more Yara rule sources
 """
 
-class YaraCompiler(BasicClass):
+class YaraRules(BasicClass):
     def __init__(self):
-        super(YaraCompiler, self).__init__()
+        super(YaraRules, self).__init__()
         self.rules_dir = self.conf['rules']['directory']
     
     def compile_rules(self, includes=False):
@@ -31,12 +32,39 @@ class YaraCompiler(BasicClass):
         count = 1
 
         for file_name in os.listdir(self.rules_dir):
-            if file_name[:-4] == ".yar":
+            if file_name[-4:] == ".yar":
                 yara_files["file_{}".format(count)] = "{}/{}".format(self.rules_dir, file_name)
                 count += 1
             else:
-                self.logger.info("Non-.yar file detected, excluding: {}".format(file_name))
+                pass
+                #self.logger.info("Non-.yar file detected, excluding: {}".format(file_name))
         self.rules = yara.compile(filepaths=yara_files, includes=includes)
+
+    def find_rule_matches(self, sample):
+        """
+        Function for finding matches against the overall rules object for a specific file
+        Args:
+            sample: str, file path for a specific file
+        Returns:
+            matches: list, Yara rule matches
+        """
+        if self.rules:
+            print("Rules already compiled")
+            pass
+        else:
+            print("No rule object compiled")
+            self.compile_rules()
+            print("Rule object compiled")
+
+        try:
+            matches = self.rules.match(filepath=sample)
+        except Exception as e:
+            print(e)
+        
+        if matches:
+            return matches
+        else:
+            return None
 
 class GithubRules(BasicClass):
     def __init__(self):
@@ -92,7 +120,7 @@ class GithubRules(BasicClass):
                     content=rule_content
                 )
                 print("Stored rule: {}".format(name))
-            sleep(1)
+            sleep(0.5)
 
     def download_rule(self, url):
         """
