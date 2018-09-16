@@ -107,3 +107,6 @@ venv.bak/
 samples/
 rules/
 settings.yaml
+.vscode/
+test.py
+
