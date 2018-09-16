@@ -18,3 +18,9 @@ Install Python dependencies e.g. elasticsearch, pyyaml, Yara
 To fetch initial set of rules from Github: python run.py --fetch
 To run against a specific file: python run.py --file filepath (where filepath is the location of the file to be scanned)
 To run against all samples in the specified samples directory: python run.py --all
+
+# Startup
+
+sudo docker ps -a (list all containers)
+sudo docker restart dockerelk_elasticsearch_1
+sudo docker restart dockerelk_kibana_1
