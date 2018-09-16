@@ -4,6 +4,7 @@ from modules.basic_module import BasicClass
 
 import os
 import hashlib
+import sys
 
 class Yelk(BasicClass):
     def __init__(self):
@@ -34,6 +35,8 @@ class Yelk(BasicClass):
         """
         if self.github:
             self.github.obtain_all_rules()
+        if self.es:
+            self.index_rules()
     
     def index_rules(self):
         """
@@ -53,6 +56,38 @@ class Yelk(BasicClass):
                     index=self.conf['elasticsearch']['rules_index'],
                     id_field='hash_id'
                 )
+
+    def index_matches_in_all_files(self):
+        """
+        Wrapping function to enumerate all samples in sample directory and index rule matches in Elasticsearch
+        """
+        try:
+            self.samples = self.enumerate_samples()
+        except Exception as e:
+            print(e)
+        count = 0
+        if self.samples:
+            for sample in self.samples:
+                print("Indexing {}".format(sample))
+                self.index_matches(sample=sample)
+                count += 1
+            print("Attempted to find Yara rule matches against {} files".format(count))
+        else:
+            print("No self.samples")
+
+    def enumerate_samples(self):
+        """
+        Function which produces a list of file names in the specified samples directory
+        Returns:
+            samples: list, filepaths to all files in samples directory
+        """
+        samples = []
+        for file_name in os.listdir(self.conf['samples']['directory']):
+            samples.append("{}/{}".format(
+                self.conf['samples']['directory'],
+                file_name
+            ))
+        return samples
     
     def index_matches(self, sample):
         # TODO use the externals dictionary to pass filename, filepath etc.
@@ -68,11 +103,16 @@ class Yelk(BasicClass):
                 data['namespace'] = item.namespace
                 data['tags'] = item.tags
                 data['meta'] = item.meta
-                #data['string_matches'] = item.strings
+                # User-readable strings containing rule name: variable name
+                #   and sample name: line number
+                data['rule_var_matches'] = []
+                data['sample_loc_matches'] = []
                 data['raw_string_matches'] = []
                 data['string_match_vars'] = []
                 data['string_match_locs'] = []
                 for triple in item.strings:
+                    data['rule_var_matches'].append("{}:{}".format(item.rule, triple[1]))
+                    data['sample_loc_matches'].append("{}:{}".format(sample, triple[0]))
                     data['raw_string_matches'].append(triple[2])
                     data['string_match_vars'].append(triple[1])
                     data['string_match_locs'].append(triple[0])
@@ -85,12 +125,26 @@ class Yelk(BasicClass):
                     id_field="hash_id"
                 )
 
-        #if matches:
-        #    print(matches)
         else:
             print("No matches found")
         
 
-y = Yelk()
-print("Initiated Yelk")
-y.index_matches(sample="/home/ubuntu/Yelk/samples/sample_file.exe")
+if __name__ == "__main__":
+    if sys.argv[1]:
+        pass
+    else:
+        print("Please input a runmode argument")
+    if sys.argv[1] == "help":
+        print("Runmodes:")
+        print("--fetch: Will fetch all rules from Github and save in rules directory")
+        print("--file filepath: Runs against a specific file")
+        print("--all: Runs against all files in the samples directory")
+    elif sys.argv[1] == "--fetch":
+        y = Yelk()
+        y.initial_run()
+    elif sys.argv[1] == "--file":
+        y = Yelk()
+        y.index_matches(sample=sys.argv[2])
+    elif sys.argv[1] == "--all":
+        y = Yelk()
+        y.index_matches_in_all_files()
